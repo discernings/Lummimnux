@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lua Deobfuscator</title>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --blue: #238636;
+      --blue-hover: #2ea043;
+      --danger: #f85149;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, #172033 0, transparent 40%),
+        var(--bg);
+    }
+
+    main {
+      width: min(1200px, 94%);
+      margin: 40px auto;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 0;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: rgba(22, 27, 34, 0.96);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .url-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 13px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: #0d1117;
+      outline: none;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15);
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 17px;
+      color: white;
+      background: var(--blue);
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: var(--blue-hover);
+    }
+
+    button.secondary {
+      background: #30363d;
+    }
+
+    button.secondary:hover {
+      background: #484f58;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .status {
+      min-height: 22px;
+      margin: 16px 0;
+      color: var(--muted);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .editors {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .editor-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 560px;
+      resize: vertical;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #010409;
+      color: #d2a8ff;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      tab-size: 2;
+      outline: none;
+    }
+
+    .warning {
+      margin-top: 18px;
+      padding: 12px;
+      border: 1px solid #6e3c3c;
+      border-radius: 8px;
+      color: #ffb4ab;
+      background: rgba(248, 81, 73, 0.08);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 800px) {
+      .url-row,
+      .editors {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+
+      .url-row button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Lua Deobfuscator</h1>
+    <p class="subtitle">
+      Baixe um arquivo Lua do GitHub e tente deixá-lo mais legível sem executar o código.
+    </p>
+
+    <section class="card">
+      <label for="githubUrl">Link Raw do GitHub</label>
+
+      <div class="url-row">
+        <input
+          id="githubUrl"
+          type="url"
+          value="https://raw.githubusercontent.com/reinvoxv2/test1/refs/heads/main/Autoparryhub"
+          placeholder="https://raw.githubusercontent.com/usuario/repositorio/refs/heads/main/arquivo.lua"
+        >
+        <button id="loadButton">Carregar</button>
+      </div>
+
+      <div class="actions">
+        <button id="deobfuscateButton">Desofuscar</button>
+        <button id="formatButton" class="secondary">Formatar</button>
+        <button id="downloadButton" class="secondary">Baixar resultado</button>
+        <button id="clearButton" class="secondary">Limpar</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="editors">
+        <div>
+          <div class="editor-title">
+            <span>Código original</span>
+            <span id="originalSize">0 caracteres</span>
+          </div>
+          <textarea id="originalCode" spellcheck="false"
+            placeholder="O código baixado aparecerá aqui..."></textarea>
+        </div>
+
+        <div>
+          <div class="editor-title">
+            <span>Resultado</span>
+            <span id="resultSize">0 caracteres</span>
+          </div>
+          <textarea id="resultCode" spellcheck="false"
+            placeholder="O resultado aparecerá aqui..."></textarea>
+        </div>
+      </div>
+
+      <div class="warning">
+        Segurança: este site não executa Lua. Ainda assim, trate o conteúdo como não confiável,
+        não cole tokens ou dados privados e não remova manualmente chamadas perigosas sem entender
+        o comportamento do script.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const urlInput = document.getElementById("githubUrl");
+    const loadButton = document.getElementById("loadButton");
+    const deobfuscateButton = document.getElementById("deobfuscateButton");
+    const formatButton = document.getElementById("formatButton");
+    const downloadButton = document.getElementById("downloadButton");
+    const clearButton = document.getElementById("clearButton");
+
+    const originalCode = document.getElementById("originalCode");
+    const resultCode = document.getElementById("resultCode");
+    const statusBox = document.getElementById("status");
+    const originalSize = document.getElementById("originalSize");
+    const resultSize = document.getElementById("resultSize");
+
+    function setStatus(message, error = false) {
+      statusBox.textContent = message;
+      statusBox.className = error ? "status error" : "status";
+    }
+
+    function updateSizes() {
+      originalSize.textContent = `${originalCode.value.length} caracteres`;
+      resultSize.textContent = `${resultCode.value.length} caracteres`;
+    }
+
+    function isAllowedGithubUrl(value) {
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:" &&
+          (url.hostname === "raw.githubusercontent.com" ||
+           url.hostname === "github.com");
+      } catch {
+        return false;
+      }
+    }
+
+    function githubBlobToRaw(value) {
+      const url = new URL(value);
+
+      if (url.hostname !== "github.com") {
+        return value;
+      }
+
+      const parts = url.pathname.split("/").filter(Boolean);
+
+      if (parts.length >= 5 && parts[2] === "blob") {
+        const owner = parts[0];
+        const repo = parts[1];
+        const branch = parts[3];
+        const filePath = parts.slice(4).join("/");
+        return `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/${branch}/${filePath}`;
+      }
+
+      return value;
+    }
+
+    async function loadSource() {
+      let url = urlInput.value.trim();
+
+      if (!isAllowedGithubUrl(url)) {
+        setStatus("Informe uma URL HTTPS do GitHub ou raw.githubusercontent.com.", true);
+        return;
+      }
+
+      try {
+        url = githubBlobToRaw(url);
+        setStatus("Baixando arquivo...");
+
+        const response = await fetch(url, {
+          method: "GET",
+          credentials: "omit",
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const text = await response.text();
+
+        if (text.length > 5_000_000) {
+          throw new Error("O arquivo excede o limite de 5 MB.");
+        }
+
+        originalCode.value = text;
+        resultCode.value = text;
+        updateSizes();
+        setStatus("Arquivo carregado. Nenhum código foi executado.");
+      } catch (error) {
+        setStatus(
+          `Não foi possível carregar o arquivo: ${error.message}. Verifique se o link é público.`,
+          true
+        );
+      }
+    }
+
+    function decodeCommonEscapes(value) {
+      return value
+        .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) =>
+          String.fromCharCode(parseInt(hex, 16))
+        )
+        .replace(/\\([0-7]{1,3})/g, (_, octal) =>
+          String.fromCharCode(parseInt(octal, 8))
+        );
+    }
+
+    function decodeNumericString(value) {
+      const parts = value.split(/[,;| ]+/).filter(Boolean);
+
+      if (parts.length < 2) {
+        return null;
+      }
+
+      if (!parts.every(item => /^d{1,3}$/.test(item))) {
+        return null;
+      }
+
+      const decoded = parts.map(item => {
+        const number = Number(item);
+        return number >= 32 && number <= 126
+          ? String.fromCharCode(number)
+          : "";
+      }).join("");
+
+      return decoded.length >= 2 ? decoded : null;
+    }
+
+    function decodeLongNumericTables(code) {
+      return code.replace(
+        /(["'])([ds,;|]{5,})(\u0001)/g,
+        (full, quote, contents) => {
+          const decoded = decodeNumericString(contents.trim());
+          return decoded ? `${quote}${decoded}${quote}` : full;
+        }
+      );
+    }
+
+    function removeNoise(code) {
+      return code
+        .replace(/\b(true|false)s*==s*\u0001\b/g, "true")
+        .replace(/\b(true|false)s*~=s*\u0001\b/g, "false")
+        .replace(/(s*([A-Za-z_][A-Za-z0-9_]*)s*)/g, "$1");
+    }
+
+    function simpleLuaFormat(code) {
+      let output = "";
+      let indent = 0;
+      let line = "";
+      let inString = null;
+      let escaped = false;
+      let inComment = false;
+
+      const addLine = value => {
+        const clean = value.trim();
+        if (clean) {
+          output += "  ".repeat(Math.max(0, indent)) + clean + "
+";
+        }
+      };
+
+      const decreaseBefore = /^s*(end|else|elseif|until)\b/;
+
+      for (let i = 0; i < code.length; i++) {
+        const char = code[i];
+        const next = code[i + 1];
+
+        if (inComment) {
+          line += char;
+          if (char === "
+") {
+            addLine(line);
+            line = "";
+            inComment = false;
+          }
+          continue;
+        }
+
+        if (inString) {
+          line += char;
+
+          if (escaped) {
+            escaped = false;
+          } else if (char === "\\") {
+            escaped = true;
+          } else if (char === inString) {
+            inString = null;
+          }
+
+          continue;
+        }
+
+        if ((char === "'" || char === '"')) {
+          inString = char;
+          line += char;
+          continue;
+        }
+
+        if (char === "-" && next === "-") {
+          inComment = true;
+          line += char;
+          continue;
+        }
+
+        if (char === "
+" || char === ";") {
+          addLine(line);
+          line = "";
+          continue;
+        }
+
+        if (char === "{") {
+          line += " {";
+          addLine(line);
+          line = "";
+          indent++;
+          continue;
+        }
+
+        if (char === "}") {
+          addLine(line);
+          line = "";
+          indent = Math.max(0, indent - 1);
+          addLine("}");
+          continue;
+        }
+
+        line += char;
+
+        if (char === " " && /^s*(end|else|elseif|until)\b/.test(line)) {
+          addLine(line);
+          line = "";
+          indent = Math.max(0, indent - 1);
+        }
+      }
+
+      addLine(line);
+
+      const lines = output.split("
+");
+      const formatted = [];
+
+      for (const current of lines) {
+        const trimmed = current.trim();
+
+        if (/^(end|until)\b/.test(trimmed)) {
+          indent = Math.max(0, indent - 1);
+        }
+
+        formatted.push("  ".repeat(Math.max(0, indent)) + trimmed);
+
+        if (/^(function|if\b.*\bthen$|for\b.*\bdo$|while\b.*\bdo$|repeat\b)/.test(trimmed)) {
+          indent++;
+        }
+
+        if (/^else\b|^elseif\b/.test(trimmed)) {
+          indent++;
+        }
+      }
+
+      return formatted.join("
+").replace(/
+{3,}/g, "
+
+").trim();
+    }
+
+    function deobfuscate(code) {
+      let result = code;
+
+      result = decodeCommonEscapes(result);
+      result = decodeLongNumericTables(result);
+      result = removeNoise(result);
+      result = simpleLuaFormat(result);
+
+      return result;
+    }
+
+    function formatOnly() {
+      if (!originalCode.value.trim()) {
+        setStatus("Carregue ou cole um código Lua primeiro.", true);
+        return;
+      }
+
+      resultCode.value = simpleLuaFormat(originalCode.value);
+      updateSizes();
+      setStatus("Formatação concluída. Isso não garante a remoção da ofuscação.");
+    }
+
+    function runDeobfuscation() {
+      if (!originalCode.value.trim()) {
+        setStatus("Carregue ou cole um código Lua primeiro.", true);
+        return;
+      }
+
+      resultCode.value = deobfuscate(originalCode.value);
+      updateSizes();
+      setStatus("Processamento concluído. Foram aplicadas apenas transformações locais.");
+    }
+
+    function downloadResult() {
+      if (!resultCode.value.trim()) {
+        setStatus("Não há resultado para baixar.", true);
+        return;
+      }
+
+      const blob = new Blob([resultCode.value], {
+        type: "text/plain;charset=utf-8"
+      });
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "lua_desofuscado.lua";
+      link.click();
+
+      URL.revokeObjectURL(link.href);
+      setStatus("Download iniciado.");
+    }
+
+    function clearAll() {
+      originalCode.value = "";
+      resultCode.value = "";
+      updateSizes();
+      setStatus("");
+    }
+
+    loadButton.addEventListener("click", loadSource);
+    deobfuscateButton.addEventListener("click", runDeobfuscation);
+    formatButton.addEventListener("click", formatOnly);
+    downloadButton.addEventListener("click", downloadResult);
+    clearButton.addEventListener("click", clearAll);
+
+    originalCode.addEventListener("input", updateSizes);
+    resultCode.addEventListener("input", updateSizes);
+
+    updateSizes();
+  </script>
+</body>
+</html>
