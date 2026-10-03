@@ -606,7 +606,11 @@ end
 ----------------------------------------------------------------
 -- Assets (GitHub): baixa leaf.png do repositório e carrega como imagem
 ----------------------------------------------------------------
-local ASSET_BASE = "https://raw.githubusercontent.com/SEU_USUARIO/Lumim/main/"
+local GITHUB_USER = "SEU_USUARIO"  -- <- coloque aqui seu usuário do GitHub
+local GITHUB_REPO = "Lumim"        -- nome do repositório
+local GITHUB_BRANCH = "main"       -- branch (confira em Code > branch)
+
+local ASSET_BASE = string.format("https://raw.githubusercontent.com/%s/%s/%s/", GITHUB_USER, GITHUB_REPO, GITHUB_BRANCH)
 pcall(function()
 	if getgenv and getgenv().LumimBase then ASSET_BASE = getgenv().LumimBase end
 end)
@@ -617,21 +621,30 @@ local function isPng(data)
 end
 
 local function loadAsset(file)
+	local reason
 	local ok, result = pcall(function()
 		local toAsset = getcustomasset or getsynasset
-		if not (toAsset and writefile and readfile and isfile) then return nil end
+		if not toAsset then reason = "executor sem getcustomasset" return nil end
+		if not (writefile and readfile and isfile) then reason = "executor sem writefile/readfile/isfile" return nil end
 		if makefolder and isfolder and not isfolder(ASSET_DIR) then makefolder(ASSET_DIR) end
 		local path = ASSET_DIR .. "/" .. file
 		-- usa o arquivo em cache se for um PNG válido; senão baixa de novo
 		if not (isfile(path) and isPng(readfile(path))) then
-			if string.find(ASSET_BASE, "SEU_USUARIO", 1, true) then return nil end
+			if string.find(ASSET_BASE, "SEU_USUARIO", 1, true) then
+				reason = "GITHUB_USER ainda é SEU_USUARIO (troque pelo seu usuário)"
+				return nil
+			end
 			local data = game:HttpGet(ASSET_BASE .. file)
-			if not isPng(data) then return nil end
+			if not isPng(data) then
+				reason = "download não retornou um PNG (confira usuário, repositório, branch e se é público): " .. ASSET_BASE .. file
+				return nil
+			end
 			writefile(path, data)
 		end
 		return toAsset(path)
 	end)
-	if ok then return result end
+	if ok and result then return result end
+	warn("[Lumim] ícone da folha não carregou, usando desenho: " .. tostring(reason or result))
 	return nil
 end
 
@@ -829,10 +842,15 @@ local window = make("Frame", {
 })
 
 -- Sidebar (ícones)
+-- container recorta o fundo arredondado: cantos externos redondos, lado interno reto
 local sidebar = make("Frame", {
-	Size = UDim2.new(0, 56, 1, 0), BackgroundColor3 = C.side,
-	BackgroundTransparency = 0.2, BorderSizePixel = 0, Parent = window,
+	Size = UDim2.new(0, 56, 1, 0), BackgroundTransparency = 1,
+	BorderSizePixel = 0, ClipsDescendants = true, Parent = window,
 })
+make("Frame", {
+	Size = UDim2.new(0, 80, 1, 0), BackgroundColor3 = C.side,
+	BackgroundTransparency = 0.2, BorderSizePixel = 0, Parent = sidebar,
+}, { corner(18) })
 make("Frame", {
 	Position = UDim2.new(1, -1, 0, 0), Size = UDim2.new(0, 1, 1, 0),
 	BackgroundColor3 = C.white, BackgroundTransparency = 0.9, BorderSizePixel = 0, Parent = sidebar,
